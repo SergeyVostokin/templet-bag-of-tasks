@@ -19,9 +19,9 @@
 #include <cstddef>
 
 #ifdef USE_TASK_EMUL
-#include <taskemul.hpp>
+#include "taskemul.hpp"
 #else
-#include <everest.hpp>
+#include "everest.hpp"
 #endif
 
 namespace TEMPLET{
