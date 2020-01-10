@@ -2,3 +2,11 @@
 
 conda install -c conda-forge xeus-cling
 jupyter lab workspaces import binder/workspace.json
+
+cd ./tools
+g++ skel.cpp -o skel
+mv skel ../bin/skel
+g++ gen.cpp lexer.cpp parse.cpp -o gen
+mv gen ../bin/gen
+
+chmod 755 ./many-tasks.sh
