@@ -7,8 +7,10 @@ using namespace TEMPLET;
 using namespace std;
 
 struct btask:task {
-	btask(taskengine&e):task(e, "5ccaba85100000638af4eabe"){}
+	btask(taskengine&e):task(e, ""){}
 };
+
+const int NUM_WORKERS = 5;
 
 /*$TET$*/
 
@@ -22,10 +24,10 @@ struct my_engine : engine{
 	void map(){ TEMPLET::map(this); }
 };
 
-#pragma templet ~msg=
+#pragma templet ~request=
 
-struct msg : message{
-	msg(actor*a, engine*e, int t) : _where(CLI), _cli(a), _client_id(t){
+struct request : message{
+	request(actor*a, engine*e, int t) : _where(CLI), _cli(a), _client_id(t){
 		::init(this, a, e);
 	}
 
@@ -34,7 +36,10 @@ struct msg : message{
 		else if (_where == SRV){ TEMPLET::send(this, _cli, _client_id); _where = CLI; }
 	}
 
-/*$TET$msg$$data*/
+/*$TET$request$$data*/
+    int    index;
+    double num;
+    bool is_first;
 /*$TET$*/
 
 	enum { CLI, SRV } _where;
@@ -44,16 +49,79 @@ struct msg : message{
 	int _server_id;
 };
 
-#pragma templet *worker(m!msg,t.btask)+
+#pragma templet *master(port?request)
+
+struct master : actor{
+	enum tag{START,TAG_port};
+
+	master(my_engine&e){
+		TEMPLET::init(this, &e, master_recv_adapter);
+/*$TET$master$master*/
+      for(int i=0;i<10;i++) arr[i] = i;
+      cur = 0;
+/*$TET$*/
+	}
+
+	bool access(message*m){ return TEMPLET::access(m, this); }
+	bool access(message&m){ return TEMPLET::access(&m, this); }
+
+	void at(int _at){ TEMPLET::at(this, _at); }
+	void delay(double t){ TEMPLET::delay(this, t); }
+	double time(){ return TEMPLET::time(this); }
+	void stop(){ TEMPLET::stop(this); }
+
+	void port(request&m){m._server_id=TAG_port; m._srv=this;}
+
+	static void master_recv_adapter (actor*a, message*m, int tag){
+		switch(tag){
+			case TAG_port: ((master*)a)->port_handler(*((request*)m)); break;
+		}
+	}
+
+	void port_handler(request&m){
+/*$TET$master$port*/
+         /*1*/
+         if(m.is_first) m.is_first = false;
+         else           arr[m.index] = m.num;
+         
+         req_list.push_back(&m);
+         
+         /*2*/
+         while(!req_list.empty() && cur < 10){
+            request* r = req_list.front();
+            req_list.pop_front();
+            
+            r->index = cur;
+            r->num = arr[cur];
+            cur++;
+            
+            r->send();
+         }
+         
+         /*3*/
+         if(req_list.size() == NUM_WORKERS){
+             for(int i=0;i<10;i++) cout << arr[i] << endl;
+             stop();
+         }
+/*$TET$*/
+	}
+
+/*$TET$master$$code&data*/
+     list<request*> req_list;
+     double arr[10];
+     int cur;
+/*$TET$*/
+};
+
+#pragma templet *worker(port!request)+
 
 struct worker : actor{
-	enum tag{START,TAG_m,TAG_t};
+	enum tag{START,TAG_port};
 
-	worker(my_engine&e):m(this, &e, TAG_m),t(*(e._teng)){
+	worker(my_engine&e):port(this, &e, TAG_port){
 		TEMPLET::init(this, &e, worker_recv_adapter);
 		TEMPLET::init(&_start, this, &e);
 		TEMPLET::send(&_start, this, START);
-		t.set_on_ready([&]() { t_handler(t); resume(); });
 /*$TET$worker$worker*/
 /*$TET$*/
 	}
@@ -66,71 +134,32 @@ struct worker : actor{
 	double time(){ return TEMPLET::time(this); }
 	void stop(){ TEMPLET::stop(this); }
 
-	msg m;
-	btask t;
-	void t_submit() { t.submit(); suspend(); };
+	request port;
 
 	static void worker_recv_adapter (actor*a, message*m, int tag){
 		switch(tag){
-			case TAG_m: ((worker*)a)->m_handler(*((msg*)m)); break;
+			case TAG_port: ((worker*)a)->port_handler(*((request*)m)); break;
 			case START: ((worker*)a)->start(); break;
 		}
 	}
 
 	void start(){
 /*$TET$worker$start*/
+       port.is_first = true;
+       port.send();
 /*$TET$*/
 	}
 
-	void m_handler(msg&m){
-/*$TET$worker$m*/
-/*$TET$*/
-	}
-
-	void t_handler(btask&t){
-/*$TET$worker$t*/
+	void port_handler(request&m){
+/*$TET$worker$port*/
+        m.num = m.num * m.num;
+        m.send();
 /*$TET$*/
 	}
 
 /*$TET$worker$$code&data*/
 /*$TET$*/
 	message _start;
-};
-
-#pragma templet *master(m?msg)
-
-struct master : actor{
-	enum tag{START,TAG_m};
-
-	master(my_engine&e){
-		TEMPLET::init(this, &e, master_recv_adapter);
-/*$TET$master$master*/
-/*$TET$*/
-	}
-
-	bool access(message*m){ return TEMPLET::access(m, this); }
-	bool access(message&m){ return TEMPLET::access(&m, this); }
-
-	void at(int _at){ TEMPLET::at(this, _at); }
-	void delay(double t){ TEMPLET::delay(this, t); }
-	double time(){ return TEMPLET::time(this); }
-	void stop(){ TEMPLET::stop(this); }
-
-	void m(msg&m){m._server_id=TAG_m; m._srv=this;}
-
-	static void master_recv_adapter (actor*a, message*m, int tag){
-		switch(tag){
-			case TAG_m: ((master*)a)->m_handler(*((msg*)m)); break;
-		}
-	}
-
-	void m_handler(msg&m){
-/*$TET$master$m*/
-/*$TET$*/
-	}
-
-/*$TET$master$$code&data*/
-/*$TET$*/
 };
 
 /*$TET$code&data*/
@@ -140,5 +169,14 @@ int main(int argc, char *argv[])
 {
 	my_engine e(argc, argv);
 /*$TET$footer*/
+    master a_master(e);
+    
+    worker** workers = new worker*[NUM_WORKERS];
+    for(int i;i<NUM_WORKERS;i++){
+        workers[i] = new worker(e);
+        a_master.port(workers[i]->port);
+    }
+
+    e.run();
 /*$TET$*/
 }
