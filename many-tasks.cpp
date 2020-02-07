@@ -7,7 +7,21 @@ using namespace TEMPLET;
 using namespace std;
 
 struct btask:task {
-	btask(taskengine&e):task(e, ""){}
+	btask(taskengine&e):task(e,"application_id"){}
+    
+    void put_number(int n){
+        json in;
+		in["name"] = "squared-number-task";
+		in["inputs"]["n"] = n;
+		input(in);
+    }
+    
+    int get_squared_number(){
+        int n=0;
+        json out=result();
+        n = out["squared-n"];
+        return n;
+    }
 };
 
 const int NUM_WORKERS = 5;
@@ -113,15 +127,16 @@ struct master : actor{
 /*$TET$*/
 };
 
-#pragma templet *worker(port!request)+
+#pragma templet *worker(port!request,task.btask)+
 
 struct worker : actor{
-	enum tag{START,TAG_port};
+	enum tag{START,TAG_port,TAG_task};
 
-	worker(my_engine&e):port(this, &e, TAG_port){
+	worker(my_engine&e):port(this, &e, TAG_port),task(*(e._teng)){
 		TEMPLET::init(this, &e, worker_recv_adapter);
 		TEMPLET::init(&_start, this, &e);
 		TEMPLET::send(&_start, this, START);
+		task.set_on_ready([&]() { task_handler(task); resume(); });
 /*$TET$worker$worker*/
 /*$TET$*/
 	}
@@ -135,6 +150,8 @@ struct worker : actor{
 	void stop(){ TEMPLET::stop(this); }
 
 	request port;
+	btask task;
+	void task_submit() { task.submit(); suspend(); };
 
 	static void worker_recv_adapter (actor*a, message*m, int tag){
 		switch(tag){
@@ -152,8 +169,19 @@ struct worker : actor{
 
 	void port_handler(request&m){
 /*$TET$worker$port*/
-        m.num = m.num * m.num;
-        m.send();
+        //m.num = m.num * m.num;
+        //m.send();
+        task.put_number(m.num);
+        cout << "submit: " << m.num << endl;
+        task_submit();
+/*$TET$*/
+	}
+
+	void task_handler(btask&t){
+/*$TET$worker$task*/
+        port.num = task.get_squared_number();
+        cout << "ready:  " << port.num << endl;
+        port.send();
 /*$TET$*/
 	}
 
@@ -170,7 +198,9 @@ int main(int argc, char *argv[])
 	my_engine e(argc, argv);
 /*$TET$footer*/
     master a_master(e);
-    
+    taskengine eng("access_token");
+    e.set_task_engine(eng);
+        
     worker** workers = new worker*[NUM_WORKERS];
     for(int i;i<NUM_WORKERS;i++){
         workers[i] = new worker(e);
