@@ -6,6 +6,10 @@
 using namespace TEMPLET;
 using namespace std;
 
+const int NUM_WORKERS = 5;
+const int NUM_TASKS = 10;
+const int TASK_TIME = 10 * 1000; // ms
+
 struct btask:task {
 	btask(taskengine&e):task(e,"application_id"){}
     
@@ -13,6 +17,7 @@ struct btask:task {
         json in;
 		in["name"] = "squared-number-task";
 		in["inputs"]["n"] = n;
+		in["inputs"]["time"] = TASK_TIME;
 		input(in);
     }
     
@@ -24,7 +29,7 @@ struct btask:task {
     }
 };
 
-const int NUM_WORKERS = 5;
+
 
 /*$TET$*/
 
@@ -71,7 +76,7 @@ struct master : actor{
 	master(my_engine&e){
 		TEMPLET::init(this, &e, master_recv_adapter);
 /*$TET$master$master*/
-      for(int i=0;i<10;i++) arr[i] = i;
+      for(int i=0;i<NUM_TASKS;i++) arr[i] = i;
       cur = 0;
 /*$TET$*/
 	}
@@ -114,7 +119,7 @@ struct master : actor{
          
          /*3*/
          if(req_list.size() == NUM_WORKERS){
-             for(int i=0;i<10;i++) cout << arr[i] << endl;
+             for(int i=0;i<10;i++) cout << arr[NUM_TASKS] << endl;
              stop();
          }
 /*$TET$*/
@@ -122,7 +127,7 @@ struct master : actor{
 
 /*$TET$master$$code&data*/
      list<request*> req_list;
-     double arr[10];
+     double arr[NUM_TASKS];
      int cur;
 /*$TET$*/
 };

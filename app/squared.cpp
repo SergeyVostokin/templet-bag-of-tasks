@@ -1,11 +1,16 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <windows.h>
 
 int main(int argc, char*argv[])
 {
 	int n;
+	int time;
 
-	if(sscanf(argv[1], "%d", &n)!=1) return EXIT_FAILURE;
+	sscanf(argv[1], "%d", &n);
+	sscanf(argv[2], "%d", &time);
+
+	Sleep(time);
 	printf("%d", n*n);
 
 	return EXIT_SUCCESS;
