@@ -5,6 +5,6 @@
 
 __for preprocessing:__ ~/many-tasks.sh
 
-__for compilation:__   g++ ~/many-tasks.cpp -l curl -o many-tasks
+__for compilation:__   g++ ~/many-tasks.cpp -l curl -fopenmp -o many-tasks
 
 __for execution:__     ~/many-tasks
