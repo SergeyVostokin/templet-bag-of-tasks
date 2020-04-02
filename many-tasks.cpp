@@ -107,7 +107,7 @@ struct master : actor{
          req_list.push_back(&m);
          
          /*2*/
-         while(!req_list.empty() && cur < 10){
+         while(!req_list.empty() && cur < NUM_TASKS){
             request* r = req_list.front();
             req_list.pop_front();
             
