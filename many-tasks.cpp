@@ -2,6 +2,7 @@
 
 #define EVEREST_EXECUTION
 #include "./lib/templet.hpp"
+#include <omp.h>
 
 using namespace TEMPLET;
 using namespace std;
@@ -119,7 +120,7 @@ struct master : actor{
          
          /*3*/
          if(req_list.size() == NUM_WORKERS){
-             for(int i=0;i<10;i++) cout << arr[NUM_TASKS] << endl;
+			 for(int i=0;i<NUM_TASKS;i++) cout << arr[i] << endl;
              stop();
          }
 /*$TET$*/
@@ -212,6 +213,14 @@ int main(int argc, char *argv[])
         a_master.port(workers[i]->port);
     }
 
+    double time = omp_get_wtime();
     e.run();
+    time = omp_get_wtime() - time;
+    
+    cout << "speedup is:  " << NUM_TASKS*(TASK_TIME/1000.0)/ time << endl;
+	cout << "NUM_TASKS is: " << NUM_TASKS << endl;
+	cout << "TASK_TIME is: " << TASK_TIME/1000.0 << " sec" << endl;
+	cout << "NUM_WORKERS is: " << NUM_WORKERS << endl;
+	
 /*$TET$*/
 }
