@@ -10,6 +10,7 @@ const int NUM_WORKERS = 5;
 /**/  // this marks problem specific code
 const int TASK_TIME = 10 * 1000; // ms
 const int NUM_TASKS = 10;
+
 double arr[NUM_TASKS];
 int cur;
 
@@ -36,53 +37,58 @@ struct worker:task {
         n = out["squared-n"];
         return n;
     }
+    
+    void on_worker_ready(){
+        // put the result
+        /**/arr[pos_in_arr] = get_squared_number();/**/
+        idle_worker_list.push_back(this);
+        run_tasks();
+    }
+    
+    static void run_tasks(){
+        // run tasks while having tasks and free workers
+        while(!idle_worker_list.empty() && /**/cur < NUM_TASKS/**/){
+            worker*w = idle_worker_list.front();
+            idle_worker_list.pop_front();
+
+            /**/w->put_number_and_pos(arr[cur],cur);cur++;/**/
+
+            w->submit([=](){w->on_worker_ready();});
+        }
+    }
+    static list<worker*> idle_worker_list;
 };
+
+list<worker*> worker::idle_worker_list;
 /**/
 
-worker worker_arr[NUM_WORKERS];
-list<worker*> idle_worker_list;
 
-void on_worker_ready(worker*w)
-{
-	// put the result, if any
-	if(w){
-       /**/arr[w->pos_in_arr] = get_squared_number();/**/
-	   idle_worker_list.push_back(w);
-	}          
-	 
-	// run tasks while having tasks and free workers
-	while(!idle_worker_list.empty() && /**/cur < NUM_TASKS/**/){
-		w = idle_worker_list.front();
-		idle_worker_list.pop_front();
-		
-		/**/w->put_number_and_pos(arr[cur],cur++);/**/
-		
-		w->submit([=](){on_worker_ready(w)});
-	}
-}
 
 int main(int argc, char *argv[])
 {
     taskengine eng("access_token");
 
-    for(int i;i<NUM_WORKERS;i++){
-        worker[i].set_app_id("application_id");
-		worker[i].set_engine(eng);
-		idle_worker_list.push_back(&worker[i]);
+    worker worker_arr[NUM_WORKERS];
+    
+    for(int i=0;i<NUM_WORKERS;i++){
+        worker_arr[i].set_app_id("5e18b9903100006776804a1e");
+		worker_arr[i].set_engine(eng);
+		worker::idle_worker_list.push_back(&worker_arr[i]);
     }
 	
 	/**/
-	for(int i=0;i<NUM_TASKS;i++) arr[i] = i;
+	for(int i=0;i<NUM_TASKS;i++){ arr[i] = i; cout << "arr[" << i << "]=" << arr[i] << endl;}
     cur = 0;
 	/**/
 
-    double time = omp_get_wtime()
-	on_worker_ready(0); // submitting the first portion of tasks
+    double time = omp_get_wtime();
+	worker::run_tasks(); // submitting the first portion of tasks
     eng.wait_all();
     time = omp_get_wtime() - time;
 	
 	/**/
-	for(int i=0;i<NUM_TASKS;i++) cout << arr[i] << endl;
+    cout << "----------\n";
+	for(int i=0;i<NUM_TASKS;i++)  cout << "arr[" << i << "]=" << arr[i] << endl;;
 	/**/
     
     cout << "speedup is:  " << NUM_TASKS*(TASK_TIME/1000.0)/ time << endl;
