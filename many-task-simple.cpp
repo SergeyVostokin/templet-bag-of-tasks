@@ -5,11 +5,11 @@
 using namespace TEMPLET;
 using namespace std;
 
-const int NUM_WORKERS = 5;
+const int NUM_WORKERS = 100; // total of slots
 
 /**/  // this marks problem specific code
-const int TASK_TIME = 10 * 1000; // ms
-const int NUM_TASKS = 10;
+const int TASK_TIME = 40 * 1000; // ms
+const int NUM_TASKS = 400;
 
 double arr[NUM_TASKS];
 int cur;
@@ -66,12 +66,12 @@ list<worker*> worker::idle_worker_list;
 
 int main(int argc, char *argv[])
 {
-    taskengine eng("access_token");
+    taskengine eng("access token");
 
     worker worker_arr[NUM_WORKERS];
     
     for(int i=0;i<NUM_WORKERS;i++){
-        worker_arr[i].set_app_id("5e18b9903100006776804a1e");
+        worker_arr[i].set_app_id("app ID");
 		worker_arr[i].set_engine(eng);
 		worker::idle_worker_list.push_back(&worker_arr[i]);
     }
@@ -90,9 +90,13 @@ int main(int argc, char *argv[])
     cout << "----------\n";
 	for(int i=0;i<NUM_TASKS;i++)  cout << "arr[" << i << "]=" << arr[i] << endl;;
 	/**/
+
+    cout << "NUM_TASKS is: " << NUM_TASKS << endl;
+    cout << "NUM_WORKERS(slots) is: " << NUM_WORKERS << endl;
     
-    cout << "speedup is:  " << NUM_TASKS*(TASK_TIME/1000.0)/ time << endl;
-	cout << "NUM_TASKS is: " << NUM_TASKS << endl;
-	cout << "TASK_TIME is: " << TASK_TIME/1000.0 << " sec" << endl;
-	cout << "NUM_WORKERS is: " << NUM_WORKERS << endl;
+    cout << "TASK_TIME is: " << TASK_TIME/1000.0 << " sec" << endl;
+    cout << "T1 is:  " << NUM_TASKS*(TASK_TIME/1000.0) << " sec" << endl;
+    cout << "Tp is:  " << time << " sec" << endl;
+    cout << "S  is:  "  << NUM_TASKS*(TASK_TIME/1000.0)/ time << endl;
+    cout << "E  is:  "  << NUM_TASKS*(TASK_TIME/1000.0)/ time / NUM_WORKERS << endl;
 }
